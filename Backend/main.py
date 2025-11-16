@@ -182,8 +182,67 @@ def GET(req):
         limit=limit))
 
 @api("/interactions")
+def GET(req):
+    uid = req.auth()
+    
+    try:
+        from db import Session, User
+        from Analytics.model_interactions import Item, Interaction
+        
+        s = Session()
+        try:
+            # First, get the username from the main database
+            import database
+            import sqlite3
+            conn = sqlite3.connect("data/local.db")
+            cur = conn.cursor()
+            cur.execute("SELECT username FROM users WHERE uid = ?", (uid,))
+            result = cur.fetchone()
+            conn.close()
+            
+            if not result:
+                return Response(404, "User not found")
+            
+            username = result[0]
+            
+            # Find or create user in analytics database
+            user = s.query(User).filter_by(username=username).first()
+            if not user:
+                # Return empty list if user hasn't been created in analytics DB yet
+                return Response(200, [])
+            
+            # Get all liked interactions for this user
+            interactions = s.query(Interaction, Item).join(Item).filter(
+                Interaction.user_id == user.id,
+                Interaction.liked == True
+            ).order_by(Interaction.ts.desc()).all()
+            
+            items = []
+            for interaction, item in interactions:
+                items.append({
+                    "id": item.id,
+                    "name": item.name,
+                    "category": item.category,
+                    "subcategory": item.subcategory,
+                    "article_type": item.article_type,
+                    "base_colour": item.base_colour,
+                    "season": item.season,
+                    "usage": item.usage,
+                    "url": item.image_url,
+                    "price": item.price,
+                    "liked_at": interaction.ts.isoformat() if interaction.ts else None
+                })
+            
+            return Response(200, items)
+        finally:
+            s.close()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response(500, str(e))
+
+@api("/interactions")
 def POST(req):
-    return Response(500)
     uid = req.auth()
 
     data = req.json()
@@ -193,19 +252,44 @@ def POST(req):
 
 #backup incase user data isn't restored
     try:
-        from db import Session
+        from db import Session, User
         from Analytics.model_interactions import Item, Interaction
 
         s = Session()
         try:
+            # First, get the username from the main database
+            import sqlite3
+            conn = sqlite3.connect("data/local.db")
+            cur = conn.cursor()
+            cur.execute("SELECT username FROM users WHERE uid = ?", (uid,))
+            result = cur.fetchone()
+            conn.close()
+            
+            if not result:
+                return Response(404, "User not found")
+            
+            username = result[0]
+            
+            # Find or create user in analytics database
+            analytics_user = s.query(User).filter_by(username=username).first()
+            if not analytics_user:
+                # Create a dummy user entry (we don't need password for analytics)
+                analytics_user = User(
+                    username=username,
+                    password_hash="",
+                    salt=b""
+                )
+                s.add(analytics_user)
+                s.flush()
+            
             qid = item.get("id")
             name = item.get("productDisplayName") or item.get("name") or ""
-            category = item.get("masterCategory") or item.get("category") or ""
+            category = item.get("masterCategory") or item.get("category") or item.get("categories", [""])[0] if item.get("categories") else ""
             subcategory = item.get("subCategory") or item.get("subcategory") or ""
             article_type = item.get("articleType") or item.get("article_type") or ""
-            base_colour = item.get("baseColour") or item.get("base_colour") or ""
+            base_colour = item.get("baseColour") or item.get("base_colour") or item.get("color") or ""
             season = item.get("season") or ""
-            usage = item.get("usage") or ""
+            usage = item.get("usage") or item.get("context") or ""
             image_url = item.get("imageURL") or item.get("url") or ""
             price = item.get("price")
 
@@ -228,7 +312,7 @@ def POST(req):
                 s.add(db_item)
                 s.flush()
 
-            inter = Interaction(user_id=uid, item_id=db_item.id, viewed=viewed, liked=liked)
+            inter = Interaction(user_id=analytics_user.id, item_id=db_item.id, viewed=viewed, liked=liked)
             s.add(inter)
             s.commit()
             return Response(200, {"interaction_id": inter.id, "item_id": db_item.id, "saved": True})

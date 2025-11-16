@@ -1,5 +1,12 @@
 def match(*, gender, categories, colors, contexts, limit=10):
     import random
+    import os
+    
+    # Check if items file exists
+    if not os.path.exists("data/items"):
+        # Return empty list if data hasn't been initialized yet
+        return []
+    
     items = []
     id = 0
     with open("data/items", "rb") as file:
