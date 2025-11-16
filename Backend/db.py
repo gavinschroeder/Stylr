@@ -3,7 +3,8 @@ import hashlib
 from sqlalchemy import create_engine, Column, Integer, String, LargeBinary
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://stylr:stylr@localhost/stylr")
+# Use SQLite for local development, same database as database.py uses
+DB_URL = os.getenv("DATABASE_URL", "sqlite:///data/analytics.db")
 
 engine = create_engine(DB_URL)
 Session = sessionmaker(bind=engine)

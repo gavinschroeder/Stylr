@@ -4,6 +4,16 @@ import react from "@vitejs/plugin-react";
 
 /** @type {import("vite").ServerHook} */
 function configureServer(server) {
+  // Initialize database first
+  execFile("python3", ["authdb.py"], {
+    cwd: "../Backend",
+    stdio: "inherit"
+  });
+  // Initialize analytics database
+  execFile("python3", ["analyticsdb.py"], {
+    cwd: "../Backend",
+    stdio: "inherit"
+  });
   execFile("python3", ["init.py"], {
     cwd: "../Backend",
     stdio: "inherit"
