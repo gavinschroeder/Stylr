@@ -5,6 +5,7 @@ import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
 import Settings from "./pages/Settings.tsx";
 import Swipe from "./pages/Swipe.tsx";
+import MyAccount from "./pages/MyAccount.tsx";
 import "./main.css";
 
 declare global {
@@ -22,6 +23,7 @@ function Protected() {
     <div className="flex flex-col min-h-screen">
       <header className="flex items-center bg-white p-4 border-gray-300 border-b-1">
         <h1 className="text-lg font-bold grow"><Link to="/">Stylr</Link></h1>
+        <Link to="/my-account" className="mr-4">My Account</Link>
         <Link to="/settings" className="mr-4">Settings</Link>
         <button onClick={() => setToken(null)} className="cursor-pointer">Logout</button>
       </header>
@@ -59,6 +61,7 @@ createRoot(root).render(
       <Route Component={UserProvider}>
         <Route Component={Protected}>
           <Route path="/" Component={Swipe} />
+          <Route path="/my-account" Component={MyAccount} />
           <Route path="/settings" Component={Settings} />
           <Route path="*" Component={NotFound} />
         </Route>

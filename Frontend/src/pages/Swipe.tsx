@@ -182,12 +182,25 @@ interface DeckProps {
 }
 
 function Deck({ items }: DeckProps) {
+  const { token } = useUser();
   const [index, setIndex] = useState(0);
 
   const top = items[index];
   const next = items[index + 1];
 
-  function swipe(_like: boolean) {
+  function swipe(like: boolean) {
+    // Log the interaction
+    if (token && top) {
+      fetch(`${__api}/interactions?access_token=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item: top,
+          viewed: true,
+          liked: like
+        })
+      }).catch(() => {}); // Silently fail
+    }
     setIndex(index + 1);
   }
 
@@ -246,15 +259,6 @@ export default function Swipe() {
     })();
     return () => { cancelled = true; };
   }, []);
-
-  //  const handleLike = async (item: Item) => {
-  //    if (!token) return;
-  //    try { await logInteraction(token, item, true, true); } catch {}
-  //  };
-  //  const handlePass = async (item: Item) => {
-  //    if (!token) return;
-  //    try { await logInteraction(token, item, true, false); } catch {}
-  //  };
 
   if (loading) {
     return <p className="text-center">Loading...</p>;
